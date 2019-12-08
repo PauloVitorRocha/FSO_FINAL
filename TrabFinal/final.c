@@ -12,7 +12,7 @@
 #include <pthread.h>
 #include <bzlib.h>
 #include <unistd.h>
-#define CORES 4
+#define CORES 2
 // struct dirent
 // {
 //     ino_t d_ino;             /* inode number */
@@ -29,7 +29,7 @@ typedef struct file{
     char source[256];
     char destiny[256];
 }thread_arg, *arq;
-thread_arg files[4096];
+thread_arg files[1000000];
 pthread_t threads[CORES];
 
 
@@ -58,33 +58,34 @@ int devolve_tipo_entrada(mode_t st_mode)
 /* Mostra as entradas do diretório 'nome_dir' 
  * Devolve 0 se tudo ok, -1 em caso de erro */
 
-void print_return(int response)
-{
+void print_return(int response){
     switch (response)
     {
     case BZ_PARAM_ERROR:
-        //printf("BZ_PARAM_ERROR\n");
+        printf("BZ_PARAM_ERROR\n");
         break;
     case BZ_SEQUENCE_ERROR:
-        //printf("BZ_SEQUENCE_ERROR\n");
+        printf("BZ_SEQUENCE_ERROR\n");
         break;
     case BZ_RUN_OK:
-        //printf("BZ_RUN_OK\n");
+        printf("BZ_RUN_OK\n");
         break;
     case BZ_FLUSH_OK:
-        //printf("BZ_FLUSH_OK\n");
+        printf("BZ_FLUSH_OK\n");
         break;
     case BZ_FINISH_OK:
-        //printf("BZ_FINISH_OK\n");
+        printf("BZ_FINISH_OK\n");
         break;
     case BZ_STREAM_END:
-        //printf("BZ_STREAM_END\n");
+        printf("BZ_STREAM_END\n");
         break;
     default:
-        //printf("ERRAO\n");
+        printf("ERRAO\n");
         break;
     }
 }
+char read_buffer[4096];
+char write_buffer[4096];
 void compress_bz2(const char *origem, const char *destino){
     char out_path[256];
     strcpy(out_path, destino);
@@ -103,9 +104,7 @@ void compress_bz2(const char *origem, const char *destino){
     BZ2_bzCompressInit(&strm, 9, 0, 30);
     int action = BZ_RUN;
     int response = BZ_OK;
-    char read_buffer[4096];
-    char write_buffer[4096];
-
+    //printf("Iniciando compressão\n");
     do{
         strm.avail_in = fread(read_buffer, sizeof(char), sizeof(read_buffer), entrada);
         //printf("strm.avail_in = %u\n", strm.avail_in);
@@ -127,6 +126,7 @@ void compress_bz2(const char *origem, const char *destino){
         } while ((strm.avail_out == 0) && (response != BZ_STREAM_END));
     } while (action != BZ_FINISH);
     BZ2_bzCompressEnd(&strm);
+    //printf("Finalizando compressão\n");
     fclose(entrada);
     fclose(saida);
 }
@@ -269,11 +269,20 @@ int main(int argc, char *argv[])
     int num_arq = mostra_dir(path, tmp, 0);
     int i;
     //printf("num_arq:%d\n", num_arq);
-    for(i=0; i<num_arq; ++i){
+    for(i=0; i<num_arq; i+=CORES){
         int tread_number = i%CORES;
         //printf("Core %d: source:%s destiny:%s\n", tread_number, files[i].source, files[i].destiny);
-        pthread_create(&threads[tread_number], NULL, thread_func, &files[i]);
+        int j;
+        for(j=0; j<CORES && (j+i)<num_arq; ++j){
+            pthread_create(&threads[j], NULL, thread_func, &files[i+j]);
+        }
+        for(j=0; j<CORES && (j+i)<num_arq; ++j){
+            pthread_join(threads[j], NULL);
+        }
         //pthread_join(threads[tread_number], NULL);
+    }
+    for(i=0; i<CORES; ++i){
+        
     }
     FILE *a = popen(tar, "r");
     pclose(a);
