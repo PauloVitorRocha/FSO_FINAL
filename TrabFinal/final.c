@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 
     strcpy(endDir, endPath);
 
-    strcat(endDir, ".bz2");
+    // strcat(endDir, ".bz2");
     // printf("endDir = %s\n", endDir);
 
     //comand TAR
