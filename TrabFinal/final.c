@@ -12,7 +12,7 @@
 #include <pthread.h>
 #include <bzlib.h>
 #include <unistd.h>
-#define CORES 2
+#define CORES 4
 // struct dirent
 // {
 //     ino_t d_ino;             /* inode number */
@@ -23,15 +23,17 @@
 //     char d_name[256];        /* filename */
 // };
 
-char read_buffer[4096];
-char write_buffer[4096];
-typedef struct file{
-    char source[256];
-    char destiny[256];
-}thread_arg, *arq;
+typedef struct file
+{
+    char source[512];
+    char destiny[512];
+} thread_arg, *arq;
+
 thread_arg files[1000000];
+
 pthread_t threads[CORES];
 
+int num_arq;
 
 DIR *opendir(const char *name);
 
@@ -58,87 +60,62 @@ int devolve_tipo_entrada(mode_t st_mode)
 /* Mostra as entradas do diretório 'nome_dir' 
  * Devolve 0 se tudo ok, -1 em caso de erro */
 
-void print_return(int response){
+void print_return(int response)
+{
     switch (response)
     {
     case BZ_PARAM_ERROR:
-        printf("BZ_PARAM_ERROR\n");
+        //printf("BZ_PARAM_ERROR\n");
         break;
     case BZ_SEQUENCE_ERROR:
-        printf("BZ_SEQUENCE_ERROR\n");
+        //printf("BZ_SEQUENCE_ERROR\n");
         break;
     case BZ_RUN_OK:
-        printf("BZ_RUN_OK\n");
+        //printf("BZ_RUN_OK\n");
         break;
     case BZ_FLUSH_OK:
-        printf("BZ_FLUSH_OK\n");
+        //printf("BZ_FLUSH_OK\n");
         break;
     case BZ_FINISH_OK:
-        printf("BZ_FINISH_OK\n");
+        //printf("BZ_FINISH_OK\n");
         break;
     case BZ_STREAM_END:
-        printf("BZ_STREAM_END\n");
+        //printf("BZ_STREAM_END\n");
         break;
     default:
-        printf("ERRAO\n");
+        //printf("ERRAO\n");
         break;
     }
 }
-char read_buffer[4096];
-char write_buffer[4096];
-void compress_bz2(const char *origem, const char *destino){
-    char out_path[256];
-    strcpy(out_path, destino);
-    strcat(out_path, ".bz2");
+// char read_buffer[4096];
+// char write_buffer[4096];
 
-    FILE *entrada;
-    entrada = fopen(origem, "rb");
-    FILE *saida;
-    saida = fopen(out_path, "wb");
 
-    //Configuração da compactação
-    bz_stream strm;
-    strm.bzalloc = NULL;
-    strm.bzfree = NULL;
-    strm.opaque = NULL;
-    BZ2_bzCompressInit(&strm, 9, 0, 30);
-    int action = BZ_RUN;
-    int response = BZ_OK;
-    //printf("Iniciando compressão\n");
-    do{
-        strm.avail_in = fread(read_buffer, sizeof(char), sizeof(read_buffer), entrada);
-        //printf("strm.avail_in = %u\n", strm.avail_in);
-        if (feof(entrada) != 0)
-        {
-            action = BZ_FINISH;
-        }
-        //printf("action=%d\n", action);
-        strm.next_in = read_buffer;
-        do{
-            strm.avail_out = sizeof(write_buffer);
-            strm.next_out = write_buffer;
-            response = BZ2_bzCompress(&strm, action);
-            //print_return(response);
-            int written_bytes = sizeof(write_buffer) - strm.avail_out;
-            fwrite(write_buffer, written_bytes, sizeof(char), saida);
-            //printf("wrt buffer: %s\n", write_buffer);
-            //printf("written_bytes: %d\n", written_bytes);
-        } while ((strm.avail_out == 0) && (response != BZ_STREAM_END));
-    } while (action != BZ_FINISH);
-    BZ2_bzCompressEnd(&strm);
-    //printf("Finalizando compressão\n");
-    fclose(entrada);
-    fclose(saida);
+void compress(const char *origem, const char *destino){
+    // //printf("ORIGEM  = %s\n", origem);
+    // //printf("DESTINO  = %s\n", destino);
+    char file[512] = "bzip2 -c ";
+    strcat(file, origem);
+    strcat(file, " > ");
+    strcat(file, destino);
+    strcat(file, ".bz2");
+    //printf("file = %s\n", file);
+    FILE *b = popen(file, "r");
+    pclose(b);
 }
-int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
+
+
+int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq)
+{
     DIR *dir_d;
     int finito, n_entradas;
     struct dirent *dir_entry;
     char path[PATH_MAX];
-    //printf("PATHMAX = %d\n", PATH_MAX);
+    ////printf("PATHMAX = %d\n", PATH_MAX);
     size_t path_len = sizeof(path);
     dir_d = opendir(nome_dir);
-    if (dir_d == NULL){
+    if (dir_d == NULL)
+    {
         fprintf(stderr, "erro: impossível abrir"
                         "DIR '%s' - %s\n",
                 nome_dir, strerror(errno));
@@ -146,29 +123,33 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
     }
     n_entradas = 0;
     finito = 0;
-
-    do{
+    do
+    {
         // Erro no arquivo, final do diretório
         dir_entry = readdir(dir_d);
-        if (dir_entry == NULL){
-            if (errno){
+        if (dir_entry == NULL)
+        {
+            if (errno)
+            {
                 fprintf(stderr, "erro: readdir"
                                 "(entrada %d)\n",
                         n_entradas);
                 closedir(dir_d);
                 exit(0);
             }
-            //printf("Iteração de DIR '%s' terminada "
+            ////printf("Iteração de DIR '%s' terminada "
             //  "(%d entradas)\n",
             //  nome_dir, n_entradas);
             finito = 1;
         }
-        else{
+        else
+        {
             // Arquivo encontrado
             struct stat stat_buf;
             snprintf(path, path_len, "%s/%s",
                      nome_dir, dir_entry->d_name);
-            if (stat(path, &stat_buf) == -1){
+            if (stat(path, &stat_buf) == -1)
+            {
                 fprintf(stderr, "impossível stat"
                                 " '%s':%s\n",
                         dir_entry->d_name,
@@ -178,10 +159,10 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
             n_entradas++;
 
             // Atualizando nome dos paths
-            char source_path[256] = "";
+            char source_path[512] = "";
             strcat(source_path, nome_dir);
             strcat(source_path, dir_entry->d_name);
-            char destiny_path[256] = "";
+            char destiny_path[512] = "";
             strcat(destiny_path, out_dir);
             strcat(destiny_path, dir_entry->d_name);
 
@@ -190,7 +171,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
             {
                 int res = strcmp(dir_entry->d_name, "..");
                 res *= strcmp(dir_entry->d_name, ".");
-                // printf("FOLDER = %s\n", dir_entry->d_name);
+                // //printf("FOLDER = %s\n", dir_entry->d_name);
                 // SE EH . ou ..
                 if (res == 0)
                 {
@@ -199,13 +180,14 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
                 strcat(destiny_path, "/");
                 strcat(source_path, "/");
                 mkdir(destiny_path, 0700);
-                num_arq=mostra_dir(source_path, destiny_path, num_arq);
+                num_arq = mostra_dir(source_path, destiny_path, num_arq);
             }
 
             //SE EH ARQUIVO
-            else{
-                //printf("Compress from %s to %s\n", source_path, destiny_path);
-                // printf("FILE = %s\n", dir_entry->d_name);
+            else
+            {
+                ////printf("Compress from %s to %s\n", source_path, destiny_path);
+                // //printf("FILE = %s\n", dir_entry->d_name);
                 strcpy(files[num_arq].source, source_path);
                 strcpy(files[num_arq].destiny, destiny_path);
                 num_arq++;
@@ -213,79 +195,142 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
             }
         }
     } while (finito == 0);
-    if (closedir(dir_d) == -1){
+    if (closedir(dir_d) == -1)
+    {
         fprintf(stderr, "erro: impossível fechar"
                         "DIR '%s' - %s\n",
                 nome_dir, strerror(errno));
         exit(0);
     }
-    //printf("DIR '%s': %d entradas\n",
+    ////printf("DIR '%s': %d entradas\n",
     //    nome_dir, n_entradas);
     return num_arq;
 }
-void *thread_func(void *arg) {
-    arq targ = (arq)arg;
-    compress_bz2(targ->source, targ->destiny);
+void *thread_func(void *value)
+{
+    // //printf("AQ\n");
+    // //printf("N_ARQ = %d", num_arq);
+    int k = 0;
+    while(k<num_arq){
+        // //printf("SOUIRCE = %s\n", files[k].source);
+        compress(files[k].source, files[k].destiny);
+        k+=4;
+    }
+    pthread_exit(0);
+}
+void *thread_func1(void *value)
+{
+    // //printf("AQ\n");
+    // //printf("N_ARQ = %d", num_arq);
+    int k = 1;
+    while (k < num_arq)
+    {
+        // //printf("SOUIRCE = %s\n", files[k].source);
+        compress(files[k].source, files[k].destiny);
+        k += 4;
+    }
+    pthread_exit(0);
+}
+void *thread_func2(void *value)
+{
+    // //printf("AQ\n");
+    // //printf("N_ARQ = %d", num_arq);
+    int k = 2;
+    while (k < num_arq)
+    {
+        // //printf("SOUIRCE = %s\n", files[k].source);
+        compress(files[k].source, files[k].destiny);
+        k += 4;
+    }
+    pthread_exit(0);
+}
+void *thread_func3(void *value)
+{
+    // //printf("AQ\n");
+    // //printf("N_ARQ = %d", num_arq);
+    int k = 3;
+    while (k < num_arq)
+    {
+        // //printf("SOUIRCE = %s\n", files[k].source);
+        compress(files[k].source, files[k].destiny);
+        k += 4;
+    }
+    pthread_exit(0);
 }
 
 int main(int argc, char *argv[])
 {
     char *path = argv[1];
     char *endPath = argv[2];
-    char endDir[256];
-    char rm[256] = "rm -rf ";
-    char tar[256] = "tar -cf ";
-    char tmp[256] = "";
+    char endDir[512];
+    char rm[512] = "rm -rf ";
+    char tar[512] = "tar -cf ";
+    char tmp[512] = "";
 
     strcpy(endDir, endPath);
     strcpy(tmp, endPath);
 
     // strcat(endDir, ".bz2");
-    // printf("endDir = %s\n", endDir);
+    // //printf("endDir = %s\n", endDir);
 
     tmp[strlen(tmp) - 4] = '\0';
-    // printf("TMP = %s\n", tmp);
+    // //printf("TMP = %s\n", tmp);
 
-        //comand TAR
+    //comand TAR
     strcat(tar, endDir);
     strcat(tar, " ");
     strcat(tar, tmp);
-    strcat(tar, " --remove-files");
-    // printf("TAR = %s\n", tar);
+    // strcat(tar, " --remove-files");
+    // //printf("TAR = %s\n", tar);
 
     //Remove se ja existe pasta
     strcat(endDir, "/");
     strcat(path, "/");
     strcat(rm, tmp);
     system(rm);
-
-    // printf("Comando = %s\n", rm);
+// 
+    // //printf("Comando = %s\n", rm);
     mkdir(tmp, 0700);
-
     strcat(tmp, "/");
     // while(valid==0);
     // sleep(1);
-    // printf("endDir = %s\n", endDir);
-    int num_arq = mostra_dir(path, tmp, 0);
-    int i;
-    //printf("num_arq:%d\n", num_arq);
-    for(i=0; i<num_arq; i+=CORES){
-        int tread_number = i%CORES;
-        //printf("Core %d: source:%s destiny:%s\n", tread_number, files[i].source, files[i].destiny);
-        int j;
-        for(j=0; j<CORES && (j+i)<num_arq; ++j){
-            pthread_create(&threads[j], NULL, thread_func, &files[i+j]);
-        }
-        for(j=0; j<CORES && (j+i)<num_arq; ++j){
-            pthread_join(threads[j], NULL);
-        }
-        //pthread_join(threads[tread_number], NULL);
-    }
-    for(i=0; i<CORES; ++i){
-        
-    }
+    // //printf("endDir = %s\n", endDir);
+    num_arq = mostra_dir(path, tmp, 0);
+    // int i;
+    // //printf("num_arq = %d\n", num_arq);
+
+    // int j;
+    // for (i = 0; i < num_arq; i += CORES)
+    // {
+    //     int tread_number = i % CORES;
+    //     // //printf("Core %d: source:%s destiny:%s\n", tread_number, files[i].source, files[i].destiny);
+    //     for (j = 0; j < CORES && (j + i) < num_arq; ++j)
+    //     {
+            // //printf("entrei aq j = %d\n", j);
+            // //printf("N_ARQUIVOS = %d\n", num_arq);
+    // int *arg = malloc(sizeof(*arg));
+    // *arg = num_arq;
+    pthread_create(&threads[0], NULL, thread_func, NULL);
+    pthread_create(&threads[1], NULL, thread_func1, NULL);
+    pthread_create(&threads[2], NULL, thread_func2, NULL);
+    pthread_create(&threads[3], NULL, thread_func3, NULL);
+    // //printf("INFINTY\n");
+    // sleep(3);
+    pthread_join(threads[0], NULL);
+    pthread_join(threads[1], NULL);
+    pthread_join(threads[2], NULL);
+    pthread_join(threads[3], NULL);
+    // }
+    //pthread_join(threads[tread_number], NULL);
+    // }
+
+    // for (i = 0; i < num_arq; i += CORES)
+    // {
+    //     //printf("file[i] = %s\n", files[i].source);
+    // }
+
     FILE *a = popen(tar, "r");
     pclose(a);
-
-    //printf("Retorno = %d\n", retorno);
+    return 0;
+        ////printf("Retorno = %d\n", retorno);
 }
