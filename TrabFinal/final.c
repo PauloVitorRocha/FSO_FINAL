@@ -77,6 +77,70 @@ void print_return(int response)
         break;
     }
 }
+void get_fname(char* destino, const char* path){
+    int i=strlen(path)-1;
+    char buffer[256];
+    int j=0;
+    while(i>=0 && path[i]!='/'){
+        buffer[j++]=path[i--];
+    }
+    buffer[j]='\0';
+    i=strlen(buffer)-1;
+    j=0;
+    while(i>=0){
+        destino[j++]=buffer[i--];
+    }
+    destino[j]='\0';
+}
+void compress_bz2(const char *origem, const char *destino){
+    char file_name[256];
+    get_fname(file_name, origem);
+    char out_path[256];
+    strcpy(out_path, destino);
+    strcat(out_path, file_name); 
+    strcat(out_path, ".bz2");
+
+    FILE *entrada;
+    entrada = fopen(origem, "rb");
+    FILE *saida;
+    saida = fopen(out_path, "wb");
+
+    //Configuração da compactação
+    bz_stream strm;
+    strm.bzalloc = NULL;
+    strm.bzfree = NULL;
+    strm.opaque = NULL;
+    BZ2_bzCompressInit(&strm, 9, 0, 30);
+    int action = BZ_RUN;
+    int response = BZ_OK;
+    char read_buffer[4096];
+    char write_buffer[4096];
+
+    do{
+        strm.avail_in = fread(read_buffer, sizeof(char), sizeof(read_buffer), entrada);
+        //printf("strm.avail_in = %u\n", strm.avail_in);
+        if (feof(entrada) != 0){
+            action = BZ_FINISH;
+        }
+        //printf("action=%d\n", action);
+        strm.next_in = read_buffer;
+        do
+        {
+            strm.avail_out = sizeof(write_buffer);
+            strm.next_out = write_buffer;
+            response = BZ2_bzCompress(&strm, action);
+            //print_return(response);
+            int written_bytes = sizeof(write_buffer) - strm.avail_out;
+            fwrite(write_buffer, written_bytes, sizeof(char), saida);
+            //printf("wrt buffer: %s\n", write_buffer);
+            //printf("written_bytes: %d\n", written_bytes);
+        } while ((strm.avail_out == 0) && (response != BZ_STREAM_END));
+    } while (action != BZ_FINISH);
+    BZ2_bzCompressEnd(&strm);
+    fclose(entrada);
+    fclose(saida);
+
+}
 int mostra_dir(const char *nome_dir, const char *out_dir)
 {
     DIR *dir_d;
@@ -96,10 +160,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
     n_entradas = 0;
     finito = 0;
 
-    int action = BZ_RUN;
-    int response = BZ_OK;
-    do
-    {
+    do{
         dir_entry = readdir(dir_d);
         if (dir_entry == NULL)
         {
@@ -116,8 +177,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
 //  nome_dir, n_entradas);
             finito = 1;
         }
-        else
-        {
+        else{
             struct stat stat_buf;
             snprintf(path, path_len, "%s/%s",
                      nome_dir, dir_entry->d_name);
@@ -136,16 +196,8 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             strcat(file_path, "/");
             strcat(file_path, dir_entry->d_name);
 
-            char write_path[256] = "";
-            strcat(write_path, out_dir);
-            strcat(write_path, dir_entry->d_name);
-            strcat(write_path, ".bz2");
-            FILE *entrada;
-            FILE *saida;
-
             // SE EH PASTA
-            if (devolve_tipo_entrada(stat_buf.st_mode) == 15)
-            {
+            if (devolve_tipo_entrada(stat_buf.st_mode) == 15){
                 int res = strcmp(dir_entry->d_name, "..");
                 res *= strcmp(dir_entry->d_name, ".");
                 // SE EH . ou ..
@@ -159,48 +211,8 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             }
 
             //SE EH ARQUIVO
-            else
-            {
-                //Starting variables
-                //printf("%s\n", dir_entry->d_name);
-                entrada = fopen(file_path, "rb");
-                saida = fopen(write_path, "wb");
-                bz_stream strm;
-                strm.bzalloc = NULL;
-                strm.bzfree = NULL;
-                strm.opaque = NULL;
-                BZ2_bzCompressInit(&strm, 9, 0, 30);
-
-                // Leitura do arquivo
-                action = BZ_RUN;
-                response = BZ_OK;
-                do
-                {
-                    strm.avail_in = fread(read_buffer, sizeof(char), sizeof(read_buffer), entrada);
-                    //printf("strm.avail_in = %u\n", strm.avail_in);
-                    if (feof(entrada) != 0)
-                    {
-                        action = BZ_FINISH;
-                    }
-                    //printf("action=%d\n", action);
-                    strm.next_in = read_buffer;
-                    do
-                    {
-                        //
-                        strm.avail_out = sizeof(write_buffer);
-                        strm.next_out = write_buffer;
-                        response = BZ2_bzCompress(&strm, action);
-                        print_return(response);
-
-                        int written_bytes = sizeof(write_buffer) - strm.avail_out;
-                        fwrite(write_buffer, written_bytes, sizeof(char), saida);
-                        //printf("wrt buffer: %s\n", write_buffer);
-                        //printf("written_bytes: %d\n", written_bytes);
-                    } while ((strm.avail_out == 0) && (response != BZ_STREAM_END));
-                } while (action != BZ_FINISH);
-                BZ2_bzCompressEnd(&strm);
-                fclose(entrada);
-                fclose(saida);
+            else{
+                compress_bz2(file_path, out_dir);
             }
         }
     } while (finito == 0);

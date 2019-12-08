@@ -1,0 +1,165 @@
+{
+    "Am": [
+        {
+            "slash": {
+                "house": 0,
+                "strings": 0
+            },
+            "fingers": [
+                {
+                    "number": "1",
+                    "house": "1",
+                    "string": "2"
+                },
+                {
+                    "number": "2",
+                    "house": "2",
+                    "string": "4"
+                }
+            ],
+            "strings": [
+                "none",
+                "base",
+                "normal",
+                "normal",
+                "normal",
+                "normal"
+            ],
+            "first_fret": ""
+        },
+        {
+            "slash": {
+                "house": 0,
+                "strings": 0
+            },
+            "fingers": [
+                {
+                    "number": "1",
+                    "house": "1",
+                    "string": "2"
+                },
+                {
+                    "number": "2",
+                    "house": "2",
+                    "string": "4"
+                },
+                {
+                    "number": "3",
+                    "house": "2",
+                    "string": "3"
+                }
+            ],
+            "strings": [
+                "none",
+                "base",
+                "normal",
+                "normal",
+                "normal",
+                "normal"
+            ],
+            "first_fret": ""
+        },
+        {
+            "slash": {
+                "house": 0,
+                "strings": 0
+            },
+            "fingers": [
+                {
+                    "number": "1",
+                    "house": "2",
+                    "string": "4"
+                },
+                {
+                    "number": "2",
+                    "house": "2",
+                    "string": "3"
+                },
+                {
+                    "number": "3",
+                    "house": "3",
+                    "string": "5"
+                },
+                {
+                    "number": "4",
+                    "house": "5",
+                    "string": "6"
+                }
+            ],
+            "strings": [
+                "base",
+                "normal",
+                "normal",
+                "normal",
+                "none",
+                "none"
+            ],
+            "first_fret": ""
+        },
+        {
+            "slash": {
+                "house": 0,
+                "strings": 0
+            },
+            "fingers": [
+                {
+                    "number": "1",
+                    "house": "2",
+                    "string": "3"
+                },
+                {
+                    "number": "2",
+                    "house": "3",
+                    "string": "5"
+                },
+                {
+                    "number": "3",
+                    "house": "5",
+                    "string": "6"
+                },
+                {
+                    "number": "4",
+                    "house": "5",
+                    "string": "4"
+                }
+            ],
+            "strings": [
+                "base",
+                "normal",
+                "normal",
+                "normal",
+                "none",
+                "none"
+            ],
+            "first_fret": ""
+        },
+        {
+            "slash": {
+                "house": 0,
+                "strings": 0
+            },
+            "fingers": [
+                {
+                    "number": "1",
+                    "house": "3",
+                    "string": "6"
+                },
+                {
+                    "number": "2",
+                    "house": "5",
+                    "string": "3"
+                },
+                {
+                    "number": "3",
+                    "house": "5",
+                    "string": "2"
+                },
+                {
+                    "number": "4",
+                    "house": "5",
+                    "string": "1"
+                }
+            ],
+            "strings": [
+                "base",
+             
