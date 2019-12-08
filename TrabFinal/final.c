@@ -77,7 +77,8 @@ void print_return(int response)
         break;
     }
 }
-void compress_bz2(const char *origem, const char *destino){
+void compress_bz2(const char *origem, const char *destino)
+{
     char out_path[256];
     strcpy(out_path, destino);
     strcat(out_path, ".bz2");
@@ -98,10 +99,12 @@ void compress_bz2(const char *origem, const char *destino){
     char read_buffer[4096];
     char write_buffer[4096];
 
-    do{
+    do
+    {
         strm.avail_in = fread(read_buffer, sizeof(char), sizeof(read_buffer), entrada);
         //printf("strm.avail_in = %u\n", strm.avail_in);
-        if (feof(entrada) != 0){
+        if (feof(entrada) != 0)
+        {
             action = BZ_FINISH;
         }
         //printf("action=%d\n", action);
@@ -121,7 +124,6 @@ void compress_bz2(const char *origem, const char *destino){
     BZ2_bzCompressEnd(&strm);
     fclose(entrada);
     fclose(saida);
-
 }
 int mostra_dir(const char *nome_dir, const char *out_dir)
 {
@@ -142,7 +144,8 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
     n_entradas = 0;
     finito = 0;
 
-    do{
+    do
+    {
         // Erro no arquivo, final do diretório
         dir_entry = readdir(dir_d);
         if (dir_entry == NULL)
@@ -156,11 +159,12 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
                 return -1;
             }
             //printf("Iteração de DIR '%s' terminada "
-//  "(%d entradas)\n",
-//  nome_dir, n_entradas);
+            //  "(%d entradas)\n",
+            //  nome_dir, n_entradas);
             finito = 1;
         }
-        else{
+        else
+        {
             // Arquivo encontrado
             struct stat stat_buf;
             snprintf(path, path_len, "%s/%s",
@@ -184,16 +188,16 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             strcat(destiny_path, dir_entry->d_name);
 
             // SE EH PASTA
-            if (devolve_tipo_entrada(stat_buf.st_mode) == 15){
+            if (devolve_tipo_entrada(stat_buf.st_mode) == 15)
+            {
                 int res = strcmp(dir_entry->d_name, "..");
                 res *= strcmp(dir_entry->d_name, ".");
+                // printf("FOLDER = %s\n", dir_entry->d_name);
                 // SE EH . ou ..
                 if (res == 0)
                 {
-                    //printf("%s\n", dir_entry->d_name);
                     continue;
                 }
-                //printf("%s\n", dir_entry->d_name);
                 strcat(destiny_path, "/");
                 strcat(source_path, "/");
                 mkdir(destiny_path, 0700);
@@ -201,8 +205,10 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             }
 
             //SE EH ARQUIVO
-            else{
+            else
+            {
                 //printf("Compress from %s to %s\n", source_path, destiny_path);
+                // printf("FILE = %s\n", dir_entry->d_name);
                 compress_bz2(source_path, destiny_path);
             }
         }
@@ -215,7 +221,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
         return -1;
     }
     //printf("DIR '%s': %d entradas\n",
-        //    nome_dir, n_entradas);
+    //    nome_dir, n_entradas);
     return 0;
 }
 
@@ -223,18 +229,37 @@ int main(int argc, char *argv[])
 {
     char *path = argv[1];
     char *endPath = argv[2];
-    char tmp[256];
-    char tmp1[256] = "rm -rf ";
+    char endDir[256];
+    char rm[256] = "rm -rf ";
+    char tar[256] = "tar -cf ";
 
-    strcpy(tmp, endPath);
+    strcpy(endDir, endPath);
 
-    tmp[strlen(tmp)-1] = '.';
-    strcat(tmp, "bz2/");
-    strcat(tmp1, tmp);
-    system(tmp1);
-    printf("%s\n", tmp1);
-    mkdir(tmp, 0700);
+    strcat(endDir, ".bz2");
+    // printf("endDir = %s\n", endDir);
 
-        int retorno = mostra_dir(path, tmp);
+    //comand TAR
+    strcat(tar, endDir);
+    strcat(tar, ".tar ");
+    strcat(tar, endDir);
+    strcat(tar, " --remove-files");
+    // printf("TAR = %s\n", tar);
+
+    strcat(endDir, "/");
+    //Remove se ja existe pasta
+    strcat(rm, endDir);
+    system(rm);
+
+    // printf("Comando = %s\n", rm);
+    mkdir(endDir, 0700);
+
+    strcat(path, "/");
+    // while(valid==0);
+    // sleep(1);
+    // printf("endDir = %s\n", endDir);
+    int retorno = mostra_dir(path, endDir);
+    FILE *a = popen(tar, "r");
+    pclose(a);
+
     //printf("Retorno = %d\n", retorno);
 }
