@@ -9,9 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 // #include <libtar.h>
+#include <pthread.h>
 #include <bzlib.h>
 #include <unistd.h>
-
+#define CORES 4
 // struct dirent
 // {
 //     ino_t d_ino;             /* inode number */
@@ -27,9 +28,11 @@ char write_buffer[4096];
 typedef struct file{
     char source[256];
     char destiny[256];
-}arq;
+}thread_arg, *arq;
+thread_arg files[4096];
+pthread_t threads[CORES];
 
-arq files[4096];
+
 DIR *opendir(const char *name);
 
 struct dirent *readdir(DIR *dirp);
@@ -220,6 +223,10 @@ int mostra_dir(const char *nome_dir, const char *out_dir, int num_arq){
     //    nome_dir, n_entradas);
     return num_arq;
 }
+void *thread_func(void *arg) {
+    arq targ = (arq)arg;
+    compress_bz2(targ->source, targ->destiny);
+}
 
 int main(int argc, char *argv[])
 {
@@ -261,10 +268,12 @@ int main(int argc, char *argv[])
     // printf("endDir = %s\n", endDir);
     int num_arq = mostra_dir(path, tmp, 0);
     int i;
-    printf("num_arq:%d\n", num_arq);
+    //printf("num_arq:%d\n", num_arq);
     for(i=0; i<num_arq; ++i){
-        printf("struct %d: source:%s destiny:%s\n", i, files[i].source, files[i].destiny);
-        compress_bz2(files[i].source, files[i].destiny);
+        int tread_number = i%CORES;
+        //printf("Core %d: source:%s destiny:%s\n", tread_number, files[i].source, files[i].destiny);
+        pthread_create(&threads[tread_number], NULL, thread_func, &files[i]);
+        //pthread_join(threads[tread_number], NULL);
     }
     FILE *a = popen(tar, "r");
     pclose(a);
