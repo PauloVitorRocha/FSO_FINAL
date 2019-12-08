@@ -77,27 +77,9 @@ void print_return(int response)
         break;
     }
 }
-void get_fname(char* destino, const char* path){
-    int i=strlen(path)-1;
-    char buffer[256];
-    int j=0;
-    while(i>=0 && path[i]!='/'){
-        buffer[j++]=path[i--];
-    }
-    buffer[j]='\0';
-    i=strlen(buffer)-1;
-    j=0;
-    while(i>=0){
-        destino[j++]=buffer[i--];
-    }
-    destino[j]='\0';
-}
 void compress_bz2(const char *origem, const char *destino){
-    char file_name[256];
-    get_fname(file_name, origem);
     char out_path[256];
     strcpy(out_path, destino);
-    strcat(out_path, file_name); 
     strcat(out_path, ".bz2");
 
     FILE *entrada;
@@ -161,6 +143,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
     finito = 0;
 
     do{
+        // Erro no arquivo, final do diretório
         dir_entry = readdir(dir_d);
         if (dir_entry == NULL)
         {
@@ -178,6 +161,7 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             finito = 1;
         }
         else{
+            // Arquivo encontrado
             struct stat stat_buf;
             snprintf(path, path_len, "%s/%s",
                      nome_dir, dir_entry->d_name);
@@ -191,10 +175,13 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
             }
             n_entradas++;
 
-            char file_path[256] = "";
-            strcat(file_path, nome_dir);
-            strcat(file_path, "/");
-            strcat(file_path, dir_entry->d_name);
+            // Atualizando nome dos paths
+            char source_path[256] = "";
+            strcat(source_path, nome_dir);
+            strcat(source_path, dir_entry->d_name);
+            char destiny_path[256] = "";
+            strcat(destiny_path, out_dir);
+            strcat(destiny_path, dir_entry->d_name);
 
             // SE EH PASTA
             if (devolve_tipo_entrada(stat_buf.st_mode) == 15){
@@ -207,12 +194,16 @@ int mostra_dir(const char *nome_dir, const char *out_dir)
                     continue;
                 }
                 //printf("%s\n", dir_entry->d_name);
-                mostra_dir(file_path, out_dir);
+                strcat(destiny_path, "/");
+                strcat(source_path, "/");
+                mkdir(destiny_path, 0700);
+                mostra_dir(source_path, destiny_path);
             }
 
             //SE EH ARQUIVO
             else{
-                compress_bz2(file_path, out_dir);
+                //printf("Compress from %s to %s\n", source_path, destiny_path);
+                compress_bz2(source_path, destiny_path);
             }
         }
     } while (finito == 0);
